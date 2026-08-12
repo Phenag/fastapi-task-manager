@@ -1,97 +1,82 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from app.schemas.task import Task, TaskCreate
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+
+from app.database import get_session
+from app.models.task import Task
+from app.schemas.task import TaskCreate, TaskUpdate, TaskRead
+
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
-router = APIRouter(
-    prefix="/tasks",
-    tags=["Tasks"]
-)
+@router.get("/", response_model=list[TaskRead])
+def get_tasks(session: Session = Depends(get_session)):
+    statement = select(Task)
+    results = session.exec(statement)
+
+    return results.all()
 
 
+@router.get("/{task_id}", response_model=TaskRead)
+def get_task(task_id: int, session: Session = Depends(get_session)):
+    statement = select(Task).where(Task.id == task_id)
+
+    results = session.exec(statement)
+
+    task = results.first()
+
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return task
 
 
-tasks = []
-next_id = 1
-
-
-@router.post("/", response_model=Task, status_code=201)
-def create_task(task: TaskCreate):
-    global next_id
-
+@router.post("/", response_model=TaskRead, status_code=201)
+def create_task(task: TaskCreate, session: Session = Depends(get_session)):
     new_task = Task(
-        id=next_id,
         title=task.title,
         description=task.description,
-        completed=task.completed
+        completed=task.completed,
     )
 
-    tasks.append(new_task)
-    next_id += 1
+    session.add(new_task)
+    session.commit()
+    session.refresh(new_task)
 
     return new_task
 
 
-@router.get("/", response_model=list[Task])
-def get_tasks():
-    return tasks
-
-
-@router.get("/{task_id}", response_model=Task)
-def get_task(task_id: int):
-
-    for task in tasks:
-        if task.id == task_id:
-            return task
-
-    raise HTTPException(
-        status_code=404,
-        detail="Task not found"
-    )
-
-
-@router.put("/{task_id}", response_model=Task)
+@router.patch("/{task_id}", response_model=TaskRead)
 def update_task(
-    task_id: int,
-    updated_task: TaskCreate
+    task_id: int, task: TaskUpdate, session: Session = Depends(get_session)
 ):
+    db_task = session.get(Task, task_id)
 
-    for index, task in enumerate(tasks):
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
 
-        if task.id == task_id:
+    task_data = task.model_dump(exclude_unset=True)
 
-            new_task = Task(
-                id=task_id,
-                title=updated_task.title,
-                description=updated_task.description,
-                completed=updated_task.completed
-            )
+    db_task.sqlmodel_update(task_data)
 
-            tasks[index] = new_task
+    session.add(db_task)
+    session.commit()
+    session.refresh(db_task)
 
-            return new_task
-
-    raise HTTPException(
-        status_code=404,
-        detail="Task not found"
-    )
+    return db_task
 
 
 @router.delete("/{task_id}")
-def delete_task(task_id: int):
+def delete_task(task_id: int, session: Session = Depends(get_session)):
+    statement = select(Task).where(Task.id == task_id)
 
-    for index, task in enumerate(tasks):
+    results = session.exec(statement)
 
-        if task.id == task_id:
+    task = results.first()
 
-            deleted_task = tasks.pop(index)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
 
-            return {
-                "message": "Task deleted",
-                "task": deleted_task
-            }
+    session.delete(task)
+    session.commit()
 
-    raise HTTPException(
-        status_code=404,
-        detail="Task not found"
-    )
+    return {"message": "Task deleted successfully"}
