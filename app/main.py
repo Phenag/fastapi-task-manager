@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.database import create_db_and_tables
 from app.models import Task, User
-from app.routers import tasks, users
+from app.routers import tasks, users, tags
 
 app = FastAPI()
 
@@ -14,6 +14,7 @@ def on_startup():
 
 app.include_router(tasks.router)
 app.include_router(users.router)
+app.include_router(tags.router)
 
 
 @app.get("/")

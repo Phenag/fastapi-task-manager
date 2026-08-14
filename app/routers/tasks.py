@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models.task import Task
-from app.schemas.task import TaskCreate, TaskUpdate, TaskRead
+from app.models import Tag, Task
+from app.schemas import TaskUpdate, TaskRead, TaskCreate
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -45,6 +45,10 @@ def create_task(task: TaskCreate, session: Session = Depends(get_session)):
         completed=task.completed,
         user_id=task.user_id,
     )
+    # Fetch and attach tags if tag_ids were provided in the request
+    if task.tag_ids:
+        tags = session.exec(select(Tag).where(Tag.id.in_(task.tag_ids))).all()
+        new_task.tags = tags
     session.add(new_task)
     session.commit()
     session.refresh(new_task)
@@ -58,8 +62,16 @@ def update_task(
     db_task = session.get(Task, task_id)
     if db_task is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    task_data = task.model_dump(exclude_unset=True)
+
+    # 1. Exclude tag_ids so sqlmodel_update doesn't break on a non-column field
+    task_data = task.model_dump(exclude_unset=True, exclude={"tag_ids"})
     db_task.sqlmodel_update(task_data)
+
+    # 2. If tag_ids was sent in the request, update the tags relationship
+    if task.tag_ids is not None:
+        tags = session.exec(select(Tag).where(Tag.id.in_(task.tag_ids))).all()
+        db_task.tags = tags
+
     session.add(db_task)
     session.commit()
     session.refresh(db_task)
