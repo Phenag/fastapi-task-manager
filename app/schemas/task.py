@@ -1,21 +1,24 @@
 from pydantic import BaseModel
+from typing import Optional, List
 
 
 ## what the client will send
 class TaskCreate(BaseModel):
-    title: str | None = None
-    description: str | None = None
+    title: str
+    description: Optional[str] = None
     completed: bool = False
-    user_id: int
-    tag_ids: list[int] = []  # <-- Add this. Defaults to an empty list
+    tag_ids: List[int] = []
+    # DO NOT include user_id here - it's auto-assigned from token
 
 
 ## what the client will send to update
 class TaskUpdate(BaseModel):
-    title: str | None = None
-    description: str | None = None
-    completed: bool = False
-    tag_ids: list[int] | None = None  # <-- Add this line
+    title: Optional[str] = None
+    description: Optional[str] = None
+    completed: Optional[bool] = None
+    tag_ids: Optional[List[int]] = None
+    # DO NOT include user_id here either
+
 
 ## nested user info shown inside a task
 class UserPublic(BaseModel):
@@ -28,11 +31,11 @@ class UserPublic(BaseModel):
 class TaskRead(BaseModel):
     id: int
     title: str
-    description: str | None = None
+    description: Optional[str] = None
     completed: bool
-    user_id: int
+    user_id: int  # This is fine for reading
     user: UserPublic
-    tag_ids: list[int] = []
+    tag_ids: List[int] = []
 
     class Config:
         from_attributes = True

@@ -15,7 +15,7 @@ class Task(SQLModel, table=True):
     title: str
     description: str | None = None
     completed: bool = False
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")  # ← Changed from "user.id" to "users.id"
 
     user: "User" = Relationship(back_populates="tasks")
     # Add this line for the Tag relationship:

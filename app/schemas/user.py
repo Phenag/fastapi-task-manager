@@ -20,3 +20,4 @@ class UserRead(BaseModel):
 class UserCreate(BaseModel):
     username: str
     email: str
+    password: str  # ← NEW: accept password when creating user

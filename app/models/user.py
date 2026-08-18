@@ -1,14 +1,19 @@
-from sqlmodel import Field, SQLModel, Relationship
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.models.task import Task
+    from models.task import Task
 
 
 class User(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    username: str
-    email: str
-    tasks: list["Task"] = Relationship(
-        back_populates="user", sa_relationship_kwargs={"cascade": "all,delete-orphan"}
-    )
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    username: str = Field(index=True, unique=True)
+
+    email: str = Field(index=True, unique=True)
+
+    password_hash: str = Field(nullable=False)
+
+    tasks: List["Task"] = Relationship(back_populates="user")

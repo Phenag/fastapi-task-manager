@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
 from app.database import create_db_and_tables
-from app.models import Task, User
-from app.routers import tasks, users, tags
+from app.models import Task, User, Tag, TaskTag
+from app.routers import tasks, users, tags,auth
 
 app = FastAPI()
 
@@ -15,6 +15,7 @@ def on_startup():
 app.include_router(tasks.router)
 app.include_router(users.router)
 app.include_router(tags.router)
+app.include_router(auth.router)
 
 
 @app.get("/")
